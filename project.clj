@@ -1,6 +1,6 @@
 (defproject discworld-tracker "0.1.0-SNAPSHOT"
-  :description "FIXME: write description"
-  :url "http://example.com/FIXME"
+  :description "A personal read/not-read tracker for Terry Pratchett's Discworld series of novels."
+  :url "https://github.com/anuj-seth/discworld-tracker"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.9.0-alpha16"]
