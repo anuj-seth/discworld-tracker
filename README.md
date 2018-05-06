@@ -1,36 +1,5 @@
 # discworld-tracker
 
-FIXME: description
+The Discworld series has 41 novels and sometimes it becomes hard to remember which of the books I have already read.
+This tracker is a desktop application built using JavaFX that shows the list of books alrady read/not read and allows you to move books from one list to the other. 
 
-## Installation
-
-Download from http://example.com/FIXME.
-
-## Usage
-
-FIXME: explanation
-
-    $ java -jar discworld-tracker-0.1.0-standalone.jar [args]
-
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2018 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
