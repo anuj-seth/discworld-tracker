@@ -17,24 +17,69 @@
     :text name
     :cell-value-factory (cell-value-factory #(key %)))))
 
-(defui BookView
+(defui ReadBooks
   (render [this books]
-          (ui/table-view
-           :items books
-           :columns (map (fn [key header]
-                           (table-column {:key key
-                                          :name header}))
-                         [:volume-number :title :year-published :subseries :notes]
-                         ["#" "Title" "Publication Year" "Subseries" "Notes"]))))
+          (ui/v-box
+           :spacing 10
+           :children [(ui/label
+                       :text "BOOKS ALREADY READ"
+                       :alignment :center
+                       :font (ui/font
+                              :family "Tahoma"
+                              :weight :normal
+                              :size 20))
+                      (ui/table-view
+                       :items (filter :read? books)
+                       :columns (map (fn [key header]
+                                       (table-column {:key key
+                                                      :name header}))
+                                     [:volume-number :title :year-published :subseries :notes]
+                                     ["#" "Title" "Publication Year" "Subseries" "Notes"]))])))
 
+(defui MoveControls
+  (render [this args]
+          (ui/v-box
+           :alignment :center
+           :spacing 5
+           :children [(ui/button
+                       :text "->")
+                      (ui/button
+                       :text "<-")])))
+
+(defui NotReadBooks
+  (render [this books]
+          (ui/v-box
+           :spacing 10
+           :children [(ui/label
+                       :text "BOOKS NOT READ"
+                       :font (ui/font
+                              :family "Tahoma"
+                              :weight :normal
+                              :size 20))
+                      (ui/table-view
+                       :items (filter (comp not :read?) books)
+                       :columns (map (fn [key header]
+                                       (table-column {:key key
+                                                      :name header}))
+                                     [:volume-number :title :year-published :subseries :notes]
+                                     ["#" "Title" "Publication Year" "Subseries" "Notes"]))])))
+
+(defui BooksView
+  (render [this books]
+          (ui/h-box
+           :spacing 10
+           ;;:style "-fx-base: rgb(30, 30, 35);"
+           :children [(not-read-books books)
+                      (move-controls)
+                      (read-books books)])))
 (defui Stage
   (render [this args]
           (ui/stage
-           :title "Hello World!"
+           :title "Discworld Tracker"
+           :maximized true
            :shown true
            :scene (ui/scene
-                   :root (book-view args)
-                   ))))
+                   :root (books-view args)))))
 
 (defn start
   []
