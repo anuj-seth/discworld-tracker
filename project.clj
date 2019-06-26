@@ -6,7 +6,8 @@
   :dependencies [[org.clojure/clojure "1.9.0"]
                  [fn-fx/fn-fx-openjfx11 "0.5.0-SNAPSHOT"]
                  [mount "0.1.14"]]
-  :main ^:skip-aot discworld-tracker.core
+  :main discworld-tracker.core
+  :aot [discworld-tracker.tracker-ui]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}}
   :java-cmd "/usr/lib/jvm/java-11-openjdk-amd64/bin/java")

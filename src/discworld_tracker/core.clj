@@ -8,6 +8,6 @@
   "A personal read/not-read tracker for Terry Pratchett's Discworld series of novels"
   [& args]
   (mount/start)
-  (tracker-ui/start))
+  (tracker-ui/start-javafx))
 
 
