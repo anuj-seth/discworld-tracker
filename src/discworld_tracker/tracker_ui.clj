@@ -3,9 +3,7 @@
             [fn-fx.controls :as ui]
             [fn-fx.diff :refer [component defui render should-update?]]
             [discworld-tracker.books :refer [books]])
-  (:import (javafx.beans.property ReadOnlyObjectWrapper)
-           (javafx.beans.value ObservableValue)
-           (javafx.beans.value ChangeListener))
+  (:import (javafx.beans.property ReadOnlyObjectWrapper))
   (:gen-class :extends
               javafx.application.Application))
 
@@ -36,14 +34,11 @@
                                                                 :size 20))])
         books-table (ui/table-view :items (sort-by-volume-number
                                            (filter data-filter-fn books))
-                                   :id :my-id
                                    ;;:min-width 500
                                    :column-resize-policy javafx.scene.control.TableView/UNCONSTRAINED_RESIZE_POLICY
                                    ;; to make the table grow when the enclosing container is resized
                                    :v-box/vgrow javafx.scene.layout.Priority/ALWAYS
-                                   :listen/selection-model.selected-item {:event :row-selected
-                                                                          :fn-fx/include {:my-id [:selection-model.selected-item.value]}
-                                                                          }
+                                   :listen/selection-model.selected-item {:event :row-selected}
                                    :columns (map (fn [[key header max-width]]
                                                    (table-column {:key key
                                                                   :name header
@@ -52,7 +47,6 @@
                                                   [:title "Title" 100]
                                                   [:year-published "Publication Year" 5]
                                                   [:subseries "Subseries" 10]]))]
-    (println (type books-table))
     (ui/v-box :spacing 10
               ;; to make the table grow horizontally when the enclosing container is resized
               :h-box/hgrow javafx.scene.layout.Priority/ALWAYS
@@ -69,17 +63,16 @@
 
 (defui MoveControls
   (render
-   [this [move-to-read-btn-state move-to-unread-btn-state]]
-   (println move-to-read-btn-state move-to-unread-btn-state)
+   [this books]
    (ui/v-box :alignment :center
              :spacing 5
              :children [(ui/button ;;:style "-fx-base: rgb(30, 30, 35);"
                                    :text "->"
-                                   :disable (not= :enabled move-to-read-btn-state)
-                                   :on-action {:event :move-to-read-btn-pressed})
+                                   :disable (not-any? #(= [true false] (juxt :selected? :read? %)) books)
+                                   :on-action {:event :move-to-read})
                         (ui/button :text "<-"
-                                   :disable (not= :enabled move-to-unread-btn-state)
-                                   :on-action {:event :move-to-unread-btn-pressed})])))
+                                   :disable (not-any? #(= [true true] (juxt :selected? :read? %)) books)
+                                   :on-action {:event :move-to-unread})])))
 
 (defui NotReadBooks
   (render
@@ -91,15 +84,12 @@
 
 (defui BooksView
   (render
-   [this {:keys [books move-to-read-btn-state move-to-unread-btn-state]}]
-   (let [not-read-books-view (not-read-books books)
-         read-books-view (read-books books)]
-     (ui/h-box :spacing 10
-               ;;:style "-fx-base: rgb(30, 30, 35);"
-               :children [not-read-books-view
-                          (move-controls [move-to-read-btn-state move-to-unread-btn-state])
-                          ;;read-books-view
-                          ]))))
+   [this books]
+   (ui/h-box :spacing 10
+             ;;:style "-fx-base: rgb(30, 30, 35);"
+             :children [(not-read-books books)
+                        (move-controls books)
+                        (read-books books)])))
 
 (defn force-exit
   []
@@ -124,14 +114,16 @@
 
 (defn -start
   [& args]
-  (let [data-state (atom {:books books
-                          :move-to-read-btn-state :enabled 
-                          :move-to-unread-btn-state :enabled})
+  (let [data-state (atom books)
         handler-fn (fn [{:keys [event] :as event-data}]
                      (condp = event
-                       :move-to-read-btn-pressed (println "move to read button pressed")
-                       :move-to-unread-btn-pressed (println "move to un-read button pressed")
-                       (println "something selected" event-data)))
+                       :move-to-read (println "move to read button pressed")
+                       :move-to-unread (println "move to un-read button pressed")
+                       :row-selected (let [{:keys [fn-fx.listen/new fn-fx.listen/old]} event-data]
+                                       (swap! data-state (fn [l]
+                                                           (map #(if )l)))
+                                       (println old new))
+                       (println "something happened" event-data)))
         ui-state (agent (dom/app (the-stage @data-state)
                                  handler-fn))]
     (add-watch data-state
@@ -146,28 +138,5 @@
   (javafx.application.Application/launch discworld_tracker.tracker_ui
                                          (into-array String args)))
 
-(comment 
-  (defprotocol Person
-    (full-name [this])
-    (greeting [this msg])
-    (description [this]))
 
-  (defrecord FictionalCharacter [name appears-in author]
-    Person
-    (full-name [this] (:name this))
-    (greeting [this msg] (str msg " " (:name this)))
-    (description [this]
-      (str (:name this) " is a character in " (:appears-in this))))
 
-  (defrecord Employee [first-name last-name department]
-    Person
-    (full-name [this] (str first-name " " last-name))
-    (greeting [this msg] (str msg " " first-name))
-    (description [this]
-      (str (:first-name this) " works in " (:department this))))
-
-  (def elizabeth (map->FictionalCharacter {:name "Elizabeth Bennet" :appears-in "Pride & Prejudice" :author "Austen"}))
-
-  (greeting elizabeth "helo ")
-  (def watson (->FictionalCharacter "John Watson" "Sign of four" "Arthur Conan Doyle"))
-  (full-name watson))
