@@ -1,8 +1,12 @@
 (ns discworld-tracker.tracker-ui
-  (:require [fn-fx.fx-dom :as dom]
+  (:require [clojure.set :as set]
+            [clojure.java.io :as io]
+            [fn-fx.fx-dom :as dom]
             [fn-fx.controls :as ui]
             [fn-fx.diff :refer [component defui render should-update?]]
-            [discworld-tracker.books :refer [books]])
+            [fn-fx.render-core :as render-core]
+            [discworld-tracker.app-state :refer [discworld-app-state]]
+            [discworld-tracker.event-handler :as event-handler])
   (:import (javafx.beans.property ReadOnlyObjectWrapper))
   (:gen-class :extends
               javafx.application.Application))
@@ -22,23 +26,20 @@
                     :cell-value-factory (cell-value-factory #(key %)))))
 
 (defn render-table
-  [books text-label data-filter-fn]
-  (let [sort-by-volume-number (fn [coll]
-                                (sort-by :volume-number
-                                         <
-                                         coll))
-        top-label (ui/h-box :alignment :center
+  [books text-label event-identifier]
+  (let [top-label (ui/h-box :alignment :center
                             :children [(ui/label :text text-label
                                                  :font (ui/font :family "Tahoma"
                                                                 :weight :normal
                                                                 :size 20))])
-        books-table (ui/table-view :items (sort-by-volume-number
-                                           (filter data-filter-fn books))
+        books-table (ui/table-view :items (sort-by :volume-number
+                                                   <
+                                                   books)
                                    ;;:min-width 500
                                    :column-resize-policy javafx.scene.control.TableView/UNCONSTRAINED_RESIZE_POLICY
                                    ;; to make the table grow when the enclosing container is resized
                                    :v-box/vgrow javafx.scene.layout.Priority/ALWAYS
-                                   :listen/selection-model.selected-item {:event :row-selected}
+                                   :listen/selection-model.selected-item {:event event-identifier}
                                    :columns (map (fn [[key header max-width]]
                                                    (table-column {:key key
                                                                   :name header
@@ -56,40 +57,46 @@
 
 (defui ReadBooks
   (render
-   [this books]
-   (render-table books
+   [this {:keys [books already-read]}]
+   (render-table (filter #(already-read (:volume-number %))
+                         books)
                  "BOOKS ALREADY READ"
-                 :read?)))
+                 :read-book-selected)))
 
 (defui MoveControls
   (render
-   [this books]
-   (ui/v-box :alignment :center
-             :spacing 5
-             :children [(ui/button ;;:style "-fx-base: rgb(30, 30, 35);"
-                                   :text "->"
-                                   :disable (not-any? #(= [true false] (juxt :selected? :read? %)) books)
-                                   :on-action {:event :move-to-read})
-                        (ui/button :text "<-"
-                                   :disable (not-any? #(= [true true] (juxt :selected? :read? %)) books)
-                                   :on-action {:event :move-to-unread})])))
+   [this {:keys [books already-read read-selected unread-selected]}]
+   (let [not-already-read (set (remove already-read
+                                       (map :volume-number books)))
+         move-to-read-btn-disabled? (empty? unread-selected)
+         move-to-unread-btn-disabled? (empty? read-selected)]
+     (ui/v-box :alignment :center
+               :spacing 5
+               :children [(ui/button ;;:style "-fx-base: rgb(30, 30, 35);"
+                           :text "->"
+                           :disable move-to-read-btn-disabled?
+                           :on-action {:event :move-to-read})
+                          (ui/button :text "<-"
+                                     :disable move-to-unread-btn-disabled?
+                                     :on-action {:event :move-to-unread})]))))
 
 (defui NotReadBooks
   (render
-   [this books]
-   (render-table books
+   [this {:keys [books already-read]}]
+   (render-table (filter (complement #(already-read (:volume-number %)))
+                         books)
                  "BOOKS NOT READ"
-                 (complement :read?))))
+                 :unread-book-selected)))
 
 
 (defui BooksView
   (render
-   [this books]
+   [this data]
    (ui/h-box :spacing 10
              ;;:style "-fx-base: rgb(30, 30, 35);"
-             :children [(not-read-books books)
-                        (move-controls books)
-                        (read-books books)])))
+             :children [(not-read-books data)
+                        (move-controls data)
+                        (read-books data)])))
 
 (defn force-exit
   []
@@ -105,33 +112,33 @@
 (defui TheStage
   (render
    [this args]
-   (ui/stage :title "Discworld Tracker"
-             :on-close-request (force-exit)
-             :maximized true
-             :shown true
-             :scene (ui/scene :root (books-view args)))))
+   (let [image-value-tp (ui/image :is (io/input-stream
+                                       (io/resource "Watch-Crest.png"
+                                                    ;;"the-turtle-moves-sticker.jpg"
+                                                    ;;"assasins_guild_stamp.gif"
+                                                    ;;"Discworld_Logo.png"
+                                                    )))
+         image (render-core/convert-value image-value-tp
+                                          javafx.scene.image.Image)]
+     (ui/stage :title "Discworld Tracker"
+               :on-close-request (force-exit)
+               :maximized true
+               :icons [image]
+               :shown true
+               :scene (ui/scene :root (books-view args))))))
 
 
 (defn -start
   [& args]
-  (let [data-state (atom books)
-        handler-fn (fn [{:keys [event] :as event-data}]
-                     (condp = event
-                       :move-to-read (println "move to read button pressed")
-                       :move-to-unread (println "move to un-read button pressed")
-                       :row-selected (let [{:keys [fn-fx.listen/new fn-fx.listen/old]} event-data]
-                                       (swap! data-state (fn [l]
-                                                           (map #(if )l)))
-                                       (println old new))
-                       (println "something happened" event-data)))
-        ui-state (agent (dom/app (the-stage @data-state)
-                                 handler-fn))]
-    (add-watch data-state
-               :ui (fn [_ _ _]
+  (let [ui-state (agent (dom/app (the-stage @discworld-app-state)
+                                 (event-handler/get-handler-fn discworld-app-state)))]
+    (add-watch discworld-app-state
+               :ui (fn [_ _ _ _]
                      (send ui-state
                            (fn [old-ui]
+                             (println discworld-app-state)
                              (dom/update-app old-ui
-                                             (the-stage @data-state))))))))
+                                             (the-stage @discworld-app-state))))))))
 
 (defn start-javafx
   [& args]
