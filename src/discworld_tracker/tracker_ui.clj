@@ -63,22 +63,34 @@
                  "BOOKS ALREADY READ"
                  :read-book-selected)))
 
+(defn image
+  [image-file]
+  (let [image-value-tp (ui/image :is (io/input-stream
+                                      (io/resource image-file)))
+        image (render-core/convert-value image-value-tp
+                                         javafx.scene.image.Image)]
+    image))
+
 (defui MoveControls
   (render
    [this {:keys [books already-read read-selected unread-selected]}]
-   (let [not-already-read (set (remove already-read
-                                       (map :volume-number books)))
-         move-to-read-btn-disabled? (empty? unread-selected)
+   (let [move-to-read-btn-disabled? (empty? unread-selected)
          move-to-unread-btn-disabled? (empty? read-selected)]
      (ui/v-box :alignment :center
                :spacing 5
                :children [(ui/button ;;:style "-fx-base: rgb(30, 30, 35);"
-                           :text "->"
+                           ;;:text "->"
+                           :graphic (ui/image-view :image (image "right_arrow.png")
+                                                   :fit-height 20
+                                                   :fit-width 20)
                            :disable move-to-read-btn-disabled?
                            :on-action {:event :move-to-read})
-                          (ui/button :text "<-"
-                                     :disable move-to-unread-btn-disabled?
-                                     :on-action {:event :move-to-unread})]))))
+                          (ui/button ; :text "<-"
+                           :graphic (ui/image-view :image (image "left_arrow.png")
+                                                   :fit-height 20
+                                                   :fit-width 20)
+                           :disable move-to-unread-btn-disabled?
+                           :on-action {:event :move-to-unread})]))))
 
 (defui NotReadBooks
   (render
@@ -133,12 +145,12 @@
   (let [ui-state (agent (dom/app (the-stage @discworld-app-state)
                                  (event-handler/get-handler-fn discworld-app-state)))]
     (add-watch discworld-app-state
-               :ui (fn [_ _ _ _]
+               :ui (fn [_ _ old-state new-state]
                      (send ui-state
                            (fn [old-ui]
-                             (println discworld-app-state)
+                             (println new-state)
                              (dom/update-app old-ui
-                                             (the-stage @discworld-app-state))))))))
+                                             (the-stage new-state))))))))
 
 (defn start-javafx
   [& args]
