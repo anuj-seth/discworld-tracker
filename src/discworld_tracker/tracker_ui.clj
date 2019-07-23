@@ -19,11 +19,13 @@
 
 (defui TableColumn
   (render
-   [this {:keys [key name max-width]}]
+   [this {:keys [key name max-width display-fn]}]
    (ui/table-column :text name
+                    :pref-width max-width
                     ;;:min-width max-width
                     ;;:resizable true
-                    :cell-value-factory (cell-value-factory #(key %)))))
+                    :cell-value-factory (cell-value-factory #(display-fn
+                                                              (key %))))))
 
 (defn render-table
   [books text-label event-identifier]
@@ -40,14 +42,15 @@
                                    ;; to make the table grow when the enclosing container is resized
                                    :v-box/vgrow javafx.scene.layout.Priority/ALWAYS
                                    :listen/selection-model.selected-item {:event event-identifier}
-                                   :columns (map (fn [[key header max-width]]
+                                   :columns (map (fn [[key header max-width display-fn]]
                                                    (table-column {:key key
                                                                   :name header
-                                                                  :max-width max-width}))
-                                                 [[:volume-number "Vol. #" 5]
-                                                  [:title "Title" 100]
-                                                  [:year-published "Publication Year" 5]
-                                                  [:subseries "Subseries" 10]]))]
+                                                                  :max-width max-width
+                                                                  :display-fn display-fn}))
+                                                 [[:volume-number "Vol. #" (/ 500 4) identity]
+                                                  [:title "Title" (/ 500 4) identity]
+                                                  [:year-published "Publication Year" (/ 500 4) identity]
+                                                  [:subseries "Subseries" (/ 500 4) name]]))]
     (ui/v-box :spacing 10
               ;; to make the table grow horizontally when the enclosing container is resized
               :h-box/hgrow javafx.scene.layout.Priority/ALWAYS
@@ -63,6 +66,17 @@
                  "BOOKS ALREADY READ"
                  :read-book-selected)))
 
+(author here), So for a inline style you can use a string on the style field of the component.
+
+This blog[http://nils-blum-oeste.net/javafx-style-using-clojure-fn-fx-garden-desktop-application-design/] goes into a bit more detail, but for stylesheets you should be able to say :stylesheet "main.css" on a scene and assuming main.css works, you should be fine.
+
+Fn-fx is highly dynamic, you can overload the convert-value method (https://github.com/halgari/fn-fx/blob/master/src/fn_fx/render_core.clj#L31-L32) and provide a custom converter.
+
+So let's say you want to do something crazy like support integers as stylesheets. If you call :style 1 you'll get an error stating there is no override for convert-value from int to string. Then you simply write
+
+(defmethod convert-value [Long String]
+  [long-value _]
+  ..conversion logic here should return a string...)
 (defn image
   [image-file]
   (let [image-value-tp (ui/image :is (io/input-stream
