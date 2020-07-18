@@ -48,21 +48,22 @@
 
 (defn get-handler-fn
   [data-state]
-  (fn handler-fn [{:keys [event] :as event-data}]
-    (condp = event
-      :move-to-read (let [selection (:unread-selected @data-state)]
-                      (println "move to read called")
-                      (swap! data-state
-                             update
-                             :already-read
-                             set/union
-                             selection))
-      :move-to-unread (let [selection (:read-selected @data-state)]
-                        (swap! data-state
-                               update
-                               :already-read
-                               set/difference
-                               selection))
-      :read-book-selected (select-event data-state :read-selected event-data)
-      :unread-book-selected (select-event data-state :unread-selected event-data)
-      (println "something happened" event-data))))
+  (let [update-atom! (fn [datom update-key update-fn compute-value-fn]
+                       (swap! data-state
+                              update
+                              update-key
+                              update-fn
+                              (comput-value-fn @data-state)))]
+    (fn handler-fn [{:keys [event] :as event-data}]
+      (condp = event
+        :move-to-read (update-atom! data-state
+                                    :already-read
+                                    set/union
+                                    :unread-selected)
+        :move-to-unread (update-atom! data-state
+                                      :already-read
+                                      set/difference
+                                      :read-selected)
+        :read-book-selected (select-event data-state :read-selected event-data)
+        :unread-book-selected (select-event data-state :unread-selected event-data)
+        (println "something happened" event-data)))))
